@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import { prisma } from "./lib/prisma.ts";
 
 dotenv.config();
-const PORT: string | number = process.env.PORT || 5000;
+const PORT: string | number = process.env.PORT || 4000;
 const localhost: string = "localhost";
 
 const connectPostgresDB = async (): Promise<void> => {

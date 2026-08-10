@@ -1,18 +1,18 @@
 # SCIC/EJP-13 Backend API
 
-A production-ready, modular REST API built with **Express.js**, **TypeScript**, **Prisma ORM**, and **PostgreSQL**, with **JWT** authentication and **bcrypt** password hashing.
+A 'production-ready , modular REST API built with **Express.js**, **TypeScript**, **Prisma ORM**, and **PostgreSQL**, with **JWT** authentication and **bcrypt** password hashing.
 
 ## Tech Stack
 
-| Layer      | Technology                              |
-| ---------- | --------------------------------------- |
-| Runtime    | Node.js + Express 5                     |
-| Language   | TypeScript (strict)                     |
-| ORM        | Prisma (Migrate, Studio, Client)        |
-| Database   | PostgreSQL                              |
-| Auth       | JWT (jsonwebtoken) + bcrypt             |
-| Config     | dotenv                                  |
-| CORS       | cors                                    |
+| Layer    | Technology                       |
+| -------- | -------------------------------- |
+| Runtime  | Node.js + Express 5              |
+| Language | TypeScript (strict)              |
+| ORM      | Prisma (Migrate, Studio, Client) |
+| Database | PostgreSQL                       |
+| Auth     | JWT (jsonwebtoken) + bcrypt      |
+| Config   | dotenv                           |
+| CORS     | cors                             |
 
 ## Project Structure
 
@@ -113,16 +113,16 @@ All endpoints return a consistent envelope:
 
 ### HTTP Status Codes
 
-| Code | Meaning                                  |
-| ---- | ---------------------------------------- |
-| 200  | OK                                       |
-| 201  | Created                                  |
-| 400  | Bad request / validation failed          |
-| 401  | Unauthenticated (missing/invalid login)  |
-| 403  | Forbidden (invalid/expired token, role)  |
-| 404  | Not found                                |
-| 409  | Conflict (duplicate unique field)        |
-| 500  | Internal server error                    |
+| Code | Meaning                                 |
+| ---- | --------------------------------------- |
+| 200  | OK                                      |
+| 201  | Created                                 |
+| 400  | Bad request / validation failed         |
+| 401  | Unauthenticated (missing/invalid login) |
+| 403  | Forbidden (invalid/expired token, role) |
+| 404  | Not found                               |
+| 409  | Conflict (duplicate unique field)       |
+| 500  | Internal server error                   |
 
 ---
 
@@ -138,7 +138,7 @@ All endpoints return a consistent envelope:
   "username": "johndoe",
   "email": "john@example.com",
   "password": "secret123",
-  "image": "https://.../avatar.png"   // optional
+  "image": "https://.../avatar.png", // optional
 }
 ```
 
@@ -157,9 +157,9 @@ All endpoints return a consistent envelope:
       "email": "john@example.com",
       "image": null,
       "role": "USER",
-      "isActive": "ACTIVE"
-    }
-  }
+      "isActive": "ACTIVE",
+    },
+  },
 }
 ```
 
@@ -177,7 +177,7 @@ All endpoints return a consistent envelope:
 
 **Errors:** `400`, `401` (invalid credentials or account deactivated/deleted)
 
-### GET `/api/auth/me` — Get the currently authenticated user  🔒
+### GET `/api/auth/me` — Get the currently authenticated user 🔒
 
 **Auth:** Bearer token required
 
@@ -187,13 +187,21 @@ All endpoints return a consistent envelope:
 {
   "success": true,
   "message": "Current user retrieved successfully",
-  "data": { "id": "019f...", "name": "John Doe", "username": "johndoe", "email": "john@example.com", "image": null, "role": "USER", "isActive": "ACTIVE" }
+  "data": {
+    "id": "019f...",
+    "name": "John Doe",
+    "username": "johndoe",
+    "email": "john@example.com",
+    "image": null,
+    "role": "USER",
+    "isActive": "ACTIVE",
+  },
 }
 ```
 
 ---
 
-## Users — `/api/users`  🔒 (all routes require a token)
+## Users — `/api/users` 🔒 (all routes require a token)
 
 > `POST, GET /, DELETE` are **admin-only**; `GET /:id` and `PATCH /:id` are self-or-admin.
 
@@ -271,9 +279,9 @@ All endpoints return a consistent envelope:
   "title": "MacBook Pro 14",
   "image": "https://.../laptop.jpg",
   "price": 1999.99,
-  "stock": 10,          // optional, default 0
-  "description": "...",  // optional
-  "categoryId": "019f..."  // must reference an existing category
+  "stock": 10, // optional, default 0
+  "description": "...", // optional
+  "categoryId": "019f...", // must reference an existing category
 }
 ```
 
@@ -311,9 +319,9 @@ All endpoints return a consistent envelope:
 
 ```jsonc
 {
-  "rating": 5,            // integer 1–5
-  "comment": "Amazing!",  // optional
-  "productId": "019f..."
+  "rating": 5, // integer 1–5
+  "comment": "Amazing!", // optional
+  "productId": "019f...",
 }
 ```
 
