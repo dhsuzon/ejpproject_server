@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+
+# Build output
+dist/
+
+# Prisma generated client
+/src/generated/prisma
+
+# OS files
+.DS_Store
+
+# Logs
+*.log
