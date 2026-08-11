@@ -1,13 +1,13 @@
 {
   "functions": {
-    "src/index.ts": {
+    "dist/index.js": {
       "maxDuration": 60
     }
   },
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "src/index.ts"
+      "dest": "dist/index.js"
     }
   ]
 }

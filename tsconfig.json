@@ -5,7 +5,9 @@
     "target": "esnext",
     "lib": ["esnext"],
     "types": ["node", "express"],
-    "noEmit": true,
+    "noEmit": false,
+    "rewriteRelativeImportExtensions": true,
+    "rootDir": "src",
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
@@ -21,5 +23,6 @@
     "allowSyntheticDefaultImports": true,
     "moduleResolution": "nodenext",
     "allowImportingTsExtensions": true
-  }
+  },
+  "include": ["src"]
 }
