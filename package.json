@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "concurrently \"tsc --noEmit --watch\" \"tsx watch src/server.ts\"",
     "start": "tsx watch src/server.ts",
+    "build": "prisma generate",
     "typecheck": "tsc --noEmit",
     "test": "echo \"Error: no test specified\" && exit 1",
     "prisma:generate": "prisma generate",
@@ -45,6 +46,6 @@
     "concurrently": "^10.0.4",
     "prisma": "^7.9.1",
     "tsx": "^4.23.11",
-    "typescript": "^7.0.2"
+    "typescript": "~5.9.3"
   }
 }

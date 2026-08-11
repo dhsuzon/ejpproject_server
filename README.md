@@ -4,16 +4,16 @@ A production-ready, modular REST API built with **Express.js**, **TypeScript**, 
 
 ## Tech Stack
 
-| Layer    | Technology                              |
-| -------- | --------------------------------------- |
-| Runtime  | Node.js + Express 5                     |
-| Language | TypeScript (strict)                     |
-| ORM      | Prisma (Migrate, Studio, Client)        |
-| Database | PostgreSQL                              |
+| Layer    | Technology                                    |
+| -------- | --------------------------------------------- |
+| Runtime  | Node.js + Express 5                           |
+| Language | TypeScript (strict)                           |
+| ORM      | Prisma (Migrate, Studio, Client)              |
+| Database | PostgreSQL                                    |
 | Auth     | JWT (jsonwebtoken) + bcrypt + httpOnly cookie |
-| Cookies  | cookie-parser                           |
-| Config   | dotenv                                  |
-| CORS     | cors (credentials-enabled)              |
+| Cookies  | cookie-parser                                 |
+| Config   | dotenv                                        |
+| CORS     | cors (credentials-enabled)                    |
 
 ## Project Structure
 
@@ -59,7 +59,7 @@ server/
 
 ```bash
 cp .env.example .env
-# edit .env and set DATABASE_URL, SECRET, BCRYPT_PASSWORD_SLOT, CLIENT_URL
+
 ```
 
 ```
@@ -142,46 +142,46 @@ All endpoints return a consistent envelope:
 
 > **Auth legend:** Public = no auth required · 🔒 = logged-in user (valid token / `shopnexus_token` httpOnly cookie or `Authorization: Bearer <token>`) · 👑 = **admin only** · ✍️ = owner **or** admin
 
-| Method | Endpoint                              | Description                                   | Auth    |
-| ------ | ------------------------------------- | --------------------------------------------- | ------- |
-| POST   | `/api/auth/register`                  | Create a user account (auto-login)            | Public  |
-| POST   | `/api/auth/login`                     | Sign in with email & password                 | Public  |
-| POST   | `/api/auth/logout`                    | Sign out and clear the session cookie         | Public  |
-| GET    | `/api/auth/me`                        | Get the current authenticated user            | 🔒      |
-| POST   | `/api/users`                          | Create a user                                 | 👑      |
-| GET    | `/api/users`                          | List users (paginated)                        | 👑      |
-| GET    | `/api/users/:id`                      | Get a single user                             | 🔒 self |
-| PATCH  | `/api/users/:id`                      | Update a user (self or admin)                 | ✍️      |
-| DELETE | `/api/users/:id`                      | Soft delete a user                            | 👑      |
-| GET    | `/api/categories`                     | List categories (paginated)                   | Public  |
-| GET    | `/api/categories/:id`                 | Get a category with its products              | Public  |
-| POST   | `/api/categories`                     | Create a category                             | 🔒      |
-| PATCH  | `/api/categories/:id`                 | Update a category                             | 🔒      |
-| DELETE | `/api/categories/:id`                 | Soft delete a category                        | 🔒      |
-| GET    | `/api/products`                       | List products (search/filter/sort/paginate)   | Public  |
-| GET    | `/api/products/categories`            | List product categories                       | Public  |
-| GET    | `/api/products/:id`                   | Get a single product                          | Public  |
-| GET    | `/api/products/:id/reviews`           | Get reviews for a product                     | Public  |
-| GET    | `/api/products/:id/related`           | Get related products                          | Public  |
-| POST   | `/api/products`                       | **Create a product**                          | 👑      |
-| PATCH  | `/api/products/:id`                   | **Update a product**                          | 👑      |
-| DELETE | `/api/products/:id`                   | **Soft delete a product**                     | 👑      |
-| POST   | `/api/products/:id/reviews`           | **Add a review to a product (login required)**| 🔒      |
-| GET    | `/api/reviews`                        | List reviews (paginated)                      | Public  |
-| GET    | `/api/reviews/:id`                    | Get a single review                           | Public  |
-| POST   | `/api/reviews`                        | **Create a review (login required)**          | 🔒      |
-| PATCH  | `/api/reviews/:id`                    | Update a review (author or admin)             | ✍️      |
-| DELETE | `/api/reviews/:id`                    | Soft delete a review (author or admin)        | ✍️      |
-| POST   | `/api/orders`                         | Create an order for the current user          | 🔒      |
-| GET    | `/api/orders/my-orders`               | Get the current user's orders                 | 🔒      |
-| GET    | `/api/orders/all`                     | Get all orders                                | 👑      |
-| PATCH  | `/api/orders/:id/status`              | Update an order status                        | 👑      |
-| POST   | `/api/payment/confirm-order`          | Confirm order after checkout                  | 🔒      |
-| POST   | `/api/payment/create-payment-intent`  | Create Stripe intent (stub — returns 400)     | 🔒      |
-| GET    | `/api/dashboard/stats`                | Dashboard stats                               | 👑      |
-| GET    | `/api/dashboard/monthly-orders`       | Orders grouped by month/year                  | 👑      |
-| GET    | `/api/dashboard/order-status`         | Orders grouped by status                      | 👑      |
-| POST   | `/api/newsletter/subscribe`           | Subscribe an email                            | Public  |
+| Method | Endpoint                             | Description                                    | Auth    |
+| ------ | ------------------------------------ | ---------------------------------------------- | ------- |
+| POST   | `/api/auth/register`                 | Create a user account (auto-login)             | Public  |
+| POST   | `/api/auth/login`                    | Sign in with email & password                  | Public  |
+| POST   | `/api/auth/logout`                   | Sign out and clear the session cookie          | Public  |
+| GET    | `/api/auth/me`                       | Get the current authenticated user             | 🔒      |
+| POST   | `/api/users`                         | Create a user                                  | 👑      |
+| GET    | `/api/users`                         | List users (paginated)                         | 👑      |
+| GET    | `/api/users/:id`                     | Get a single user                              | 🔒 self |
+| PATCH  | `/api/users/:id`                     | Update a user (self or admin)                  | ✍️      |
+| DELETE | `/api/users/:id`                     | Soft delete a user                             | 👑      |
+| GET    | `/api/categories`                    | List categories (paginated)                    | Public  |
+| GET    | `/api/categories/:id`                | Get a category with its products               | Public  |
+| POST   | `/api/categories`                    | Create a category                              | 🔒      |
+| PATCH  | `/api/categories/:id`                | Update a category                              | 🔒      |
+| DELETE | `/api/categories/:id`                | Soft delete a category                         | 🔒      |
+| GET    | `/api/products`                      | List products (search/filter/sort/paginate)    | Public  |
+| GET    | `/api/products/categories`           | List product categories                        | Public  |
+| GET    | `/api/products/:id`                  | Get a single product                           | Public  |
+| GET    | `/api/products/:id/reviews`          | Get reviews for a product                      | Public  |
+| GET    | `/api/products/:id/related`          | Get related products                           | Public  |
+| POST   | `/api/products`                      | **Create a product**                           | 👑      |
+| PATCH  | `/api/products/:id`                  | **Update a product**                           | 👑      |
+| DELETE | `/api/products/:id`                  | **Soft delete a product**                      | 👑      |
+| POST   | `/api/products/:id/reviews`          | **Add a review to a product (login required)** | 🔒      |
+| GET    | `/api/reviews`                       | List reviews (paginated)                       | Public  |
+| GET    | `/api/reviews/:id`                   | Get a single review                            | Public  |
+| POST   | `/api/reviews`                       | **Create a review (login required)**           | 🔒      |
+| PATCH  | `/api/reviews/:id`                   | Update a review (author or admin)              | ✍️      |
+| DELETE | `/api/reviews/:id`                   | Soft delete a review (author or admin)         | ✍️      |
+| POST   | `/api/orders`                        | Create an order for the current user           | 🔒      |
+| GET    | `/api/orders/my-orders`              | Get the current user's orders                  | 🔒      |
+| GET    | `/api/orders/all`                    | Get all orders                                 | 👑      |
+| PATCH  | `/api/orders/:id/status`             | Update an order status                         | 👑      |
+| POST   | `/api/payment/confirm-order`         | Confirm order after checkout                   | 🔒      |
+| POST   | `/api/payment/create-payment-intent` | Create Stripe intent (stub — returns 400)      | 🔒      |
+| GET    | `/api/dashboard/stats`               | Dashboard stats                                | 👑      |
+| GET    | `/api/dashboard/monthly-orders`      | Orders grouped by month/year                   | 👑      |
+| GET    | `/api/dashboard/order-status`        | Orders grouped by status                       | 👑      |
+| POST   | `/api/newsletter/subscribe`          | Subscribe an email                             | Public  |
 
 ---
 
@@ -203,10 +203,10 @@ All endpoints return a consistent envelope:
 ```jsonc
 {
   "name": "John Doe",
-  "username": "johndoe",         // optional
+  "username": "johndoe", // optional
   "email": "john@example.com",
   "password": "secret123",
-  "image": "https://.../avatar.png" // optional
+  "image": "https://.../avatar.png", // optional
 }
 ```
 
@@ -224,9 +224,9 @@ All endpoints return a consistent envelope:
       "email": "john@example.com",
       "image": null,
       "role": "USER",
-      "isActive": "ACTIVE"
-    }
-  }
+      "isActive": "ACTIVE",
+    },
+  },
 }
 ```
 
@@ -265,8 +265,8 @@ Clears the `shopnexus_token` cookie. **Response — `200 OK`**
     "email": "john@example.com",
     "image": null,
     "role": "USER",
-    "isActive": "ACTIVE"
-  }
+    "isActive": "ACTIVE",
+  },
 }
 ```
 
@@ -301,9 +301,13 @@ Clears the `shopnexus_token` cookie. **Response — `200 OK`**
 > Reads are public; create/update/delete require a token 🔒
 
 ### POST `/api/categories` — Create a category 🔒 · **Errors:** `400`, `409`
+
 ### GET `/api/categories` — List categories (`page`, `limit`, `search`) → `{ items, meta }`
+
 ### GET `/api/categories/:id` — Category with its `product[]` · **Errors:** `404`
+
 ### PATCH `/api/categories/:id` — Update a category 🔒 · **Errors:** `400`, `404`, `409`
+
 ### DELETE `/api/categories/:id` — Soft delete a category 🔒 · **Errors:** `404`
 
 ---
@@ -320,9 +324,9 @@ Clears the `shopnexus_token` cookie. **Response — `200 OK`**
   "title": "MacBook Pro 14",
   "image": "https://.../laptop.jpg",
   "price": 1999.99,
-  "stock": 10,          // optional, default 0
+  "stock": 10, // optional, default 0
   "description": "...", // optional
-  "categoryId": "019f..."
+  "categoryId": "019f...",
 }
 ```
 
@@ -353,14 +357,19 @@ Clears the `shopnexus_token` cookie. **Response — `200 OK`**
 > Reads are public; **creating a review requires a logged-in user** 🔒; update/delete are owner-or-admin (✍️).
 
 ### POST `/api/reviews` — Create a review 🔒 (logged-in users only)
+
 ```jsonc
 { "rating": 5, "comment": "Amazing!", "productId": "019f..." }
 ```
+
 **Errors:** `400`, `404`
 
 ### GET `/api/reviews` — List (`page`, `limit`, `productId`) → `{ items, meta }`
+
 ### GET `/api/reviews/:id` — Single review · **Errors:** `404`
+
 ### PATCH `/api/reviews/:id` — Update (owner or admin) 🔒 · **Errors:** `400`, `403`, `404`
+
 ### DELETE `/api/reviews/:id` — Soft delete (owner or admin) 🔒 · **Errors:** `403`, `404`
 
 ---
@@ -375,9 +384,15 @@ Creates an order with status `PENDING` from the provided line items and decremen
 {
   "totalAmount": 1999.99,
   "items": [
-    { "productId": "019f...", "name": "Laptop", "price": 1999.99, "quantity": 1, "image": "https://..." }
+    {
+      "productId": "019f...",
+      "name": "Laptop",
+      "price": 1999.99,
+      "quantity": 1,
+      "image": "https://...",
+    },
   ],
-  "paymentIntentId": "pi_..." // optional
+  "paymentIntentId": "pi_...", // optional
 }
 ```
 
@@ -394,6 +409,7 @@ Creates an order with status `PENDING` from the provided line items and decremen
 ## Payments — `/api/payment` 🔒 (all routes require a token)
 
 ### POST `/api/payment/confirm-order` — Create order after checkout (same as `POST /orders`)
+
 ### POST `/api/payment/create-payment-intent` — Currently returns `400` "Stripe is not configured. Use demo checkout instead."
 
 ---
@@ -401,7 +417,9 @@ Creates an order with status `PENDING` from the provided line items and decremen
 ## Dashboard — `/api/dashboard` 🔒 (admin)
 
 ### GET `/api/dashboard/stats` — Total products, orders, revenue, pending orders
+
 ### GET `/api/dashboard/monthly-orders` — Order counts grouped by month/year
+
 ### GET `/api/dashboard/order-status` — Order counts grouped by status
 
 ---
