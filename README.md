@@ -64,10 +64,12 @@ cp .env.example .env
 
 ```
 PORT=4000
-DATABASE_URL=postgresql://postgres:PASSWORD@localhost:5432/product_db
-SECRET=your_jwt_secret
-BCRYPT_PASSWORD_SLOT=10
+DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/product_db
+SECRET=your_jwt_secret_key_change_this
+BCRYPT_PASSWORD_SLOT=16
 CLIENT_URL=http://localhost:3000
+COOKIE_SECURE=false
+AUTH_COOKIE_TOKEN=your choises store token
 ```
 
 > `CLIENT_URL` is the allowed frontend origin. For local development requests from `http://localhost:<any-port>` and `http://127.0.0.1:<any-port>` are also accepted.
