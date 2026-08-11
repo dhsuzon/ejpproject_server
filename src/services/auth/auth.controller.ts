@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { sendSuccess } from "../../lib/response.ts";
+import { clearAuthCookie, setAuthCookie } from "../../lib/auth.ts";
 import {
   getCurrentUserService,
   loginService,
@@ -11,7 +12,11 @@ export const registerController = async (
   res: Response,
 ): Promise<void> => {
   const result = await registerService(req.body);
-  sendSuccess(res, 201, "User registered successfully", result);
+  setAuthCookie(res, result.token);
+  sendSuccess(res, 201, "User registered successfully", {
+    token: result.token,
+    user: result.user,
+  });
 };
 
 export const loginController = async (
@@ -19,7 +24,19 @@ export const loginController = async (
   res: Response,
 ): Promise<void> => {
   const result = await loginService(req.body);
-  sendSuccess(res, 200, "Login successful", result);
+  setAuthCookie(res, result.token);
+  sendSuccess(res, 200, "Login successful", {
+    token: result.token,
+    user: result.user,
+  });
+};
+
+export const logoutController = async (
+  _req: Request,
+  res: Response,
+): Promise<void> => {
+  clearAuthCookie(res);
+  sendSuccess(res, 200, "Logged out successfully", null);
 };
 
 export const getCurrentUserController = async (

@@ -1,18 +1,19 @@
 # SCIC/EJP-13 Backend API
 
-A 'production-ready , modular REST API built with **Express.js**, **TypeScript**, **Prisma ORM**, and **PostgreSQL**, with **JWT** authentication and **bcrypt** password hashing.
+A production-ready, modular REST API built with **Express.js**, **TypeScript**, **Prisma ORM**, and **PostgreSQL**, with **JWT** (stored in an **httpOnly cookie**) authentication and **bcrypt** password hashing.
 
 ## Tech Stack
 
-| Layer    | Technology                       |
-| -------- | -------------------------------- |
-| Runtime  | Node.js + Express 5              |
-| Language | TypeScript (strict)              |
-| ORM      | Prisma (Migrate, Studio, Client) |
-| Database | PostgreSQL                       |
-| Auth     | JWT (jsonwebtoken) + bcrypt      |
-| Config   | dotenv                           |
-| CORS     | cors                             |
+| Layer    | Technology                              |
+| -------- | --------------------------------------- |
+| Runtime  | Node.js + Express 5                     |
+| Language | TypeScript (strict)                     |
+| ORM      | Prisma (Migrate, Studio, Client)        |
+| Database | PostgreSQL                              |
+| Auth     | JWT (jsonwebtoken) + bcrypt + httpOnly cookie |
+| Cookies  | cookie-parser                           |
+| Config   | dotenv                                  |
+| CORS     | cors (credentials-enabled)              |
 
 ## Project Structure
 
@@ -25,18 +26,18 @@ server/
 │   ├── server.ts                  # Entry: DB connect + listen
 │   ├── routes/                    # Route definitions (one per module)
 │   ├── services/
-│   │   ├── auth/
-│   │   │   ├── auth.controller.ts
-│   │   │   └── auth.service.ts
+│   │   ├── auth/                  # auth.controller.ts, auth.service.ts
 │   │   ├── user/
 │   │   ├── category/
 │   │   ├── product/
-│   │   └── review/
+│   │   ├── review/
+│   │   ├── order/
+│   │   └── payment/ dashboard/ newsletter/
 │   └── lib/                       # Shared infra
 │       ├── prisma.ts              # PrismaClient (driver adapter)
 │       ├── response.ts            # Consistent { success, message, data } envelope
 │       ├── error.ts               # AppError + global error & 404 handlers
-│       ├── auth.ts                # createToken, verifyToken, isAdmin, bcrypt
+│       ├── auth.ts                # createToken, setAuthCookie, clearAuthCookie, verifyToken, isAdmin, bcrypt
 │       ├── validation.ts          # Manual request validation helpers
 │       ├── pagination.ts          # getPagination / buildPagedData
 │       ├── http.ts                # typed route param helper
@@ -58,15 +59,18 @@ server/
 
 ```bash
 cp .env.example .env
-# edit .env and set DATABASE_URL, SECRET, BCRYPT_PASSWORD_SLOT
+# edit .env and set DATABASE_URL, SECRET, BCRYPT_PASSWORD_SLOT, CLIENT_URL
 ```
 
 ```
-PORT=5000
+PORT=4000
 DATABASE_URL=postgresql://postgres:PASSWORD@localhost:5432/product_db
 SECRET=your_jwt_secret
-BCRYPT_PASSWORD_SLOT=16
+BCRYPT_PASSWORD_SLOT=10
+CLIENT_URL=http://localhost:3000
 ```
+
+> `CLIENT_URL` is the allowed frontend origin. For local development requests from `http://localhost:<any-port>` and `http://127.0.0.1:<any-port>` are also accepted.
 
 ### 3. Install, Migrate, Run
 
@@ -74,25 +78,31 @@ BCRYPT_PASSWORD_SLOT=16
 npm install
 npm run prisma:migrate   # run migrations
 npm run prisma:generate  # generate Prisma Client
+npm run db:seed          # optional: seed demo user + categories + products
 npm run dev              # start with hot reload
 ```
 
 Other scripts:
 
 ```bash
-npm run typecheck        # tsc --noEmit
-npm run prisma:studio    # Open Prisma Studio GUI
-npm start                # run without watch
+npm run typecheck     # tsc --noEmit
+npm run prisma:studio # Open Prisma Studio GUI
+npm start             # run without watch
 ```
+
+The API runs at `http://localhost:4000`.
 
 ## Database Design
 
-- Normalized relational schema with 4 models: `User`, `Category`, `Product`, `Review`
-- Enums: `Role` (`USER` | `ADMIN`), `IsActive` (`ACTIVE` | `INACTIVE`)
-- Relationships: `Product → Category` (many-to-one), `Review → User & Product` (many-to-one)
+- Normalized relational schema with 5 models: `User`, `Category`, `Product`, `Review`, `Order`
+- Enums: `Role` (`USER` | `ADMIN`), `IsActive` (`ACTIVE` | `INACTIVE`), `OrderStatus` (`PENDING` | `SHIPPING` | `DELIVERED`)
+- Relationships:
+  - `Product → Category` (many-to-one)
+  - `Review → User & Product` (many-to-one)
+  - `Order → User` (many-to-one); order line items stored as `Json`
 - Every model: `id` (UUIDv7), `isDeleted` (soft delete), `createdAt`, `updatedAt`
 - Table names mapped with `@@map()` (e.g. `User → users`, `Product → products`)
-- Indexes on foreign keys: `products.categoryId`, `reviews.userId`, `reviews.productId`
+- Indexes on foreign keys: `products.categoryId`, `reviews.userId`, `reviews.productId`, `orders.userId`
 
 ## API Convention
 
@@ -106,9 +116,9 @@ All endpoints return a consistent envelope:
 { "success": false, "message": "Product not found" }
 ```
 
-- Base URL: `http://localhost:5000/api`
+- Base URL: `http://localhost:4000/api`
 - Paginated list responses return: `{ items: [], meta: { page, limit, skip, total, totalPages } }`
-- **Authentication**: send `Authorization: Bearer <token>` on protected routes
+- **Authentication**: on login/register the server sets a `shopnexus_token` **httpOnly cookie** (`SameSite=Lax`, 7 days). The frontend must send requests with `credentials: "include"`. A `Authorization: Bearer <token>` header is also accepted for API clients.
 - **Soft Delete**: `DELETE` sets `isDeleted = true`; deleted records are excluded from all reads
 
 ### HTTP Status Codes
@@ -126,30 +136,85 @@ All endpoints return a consistent envelope:
 
 ---
 
+## API Endpoint Reference
+
+> **Auth legend:** Public = no auth required · 🔒 = logged-in user (valid token / `shopnexus_token` httpOnly cookie or `Authorization: Bearer <token>`) · 👑 = **admin only** · ✍️ = owner **or** admin
+
+| Method | Endpoint                              | Description                                   | Auth    |
+| ------ | ------------------------------------- | --------------------------------------------- | ------- |
+| POST   | `/api/auth/register`                  | Create a user account (auto-login)            | Public  |
+| POST   | `/api/auth/login`                     | Sign in with email & password                 | Public  |
+| POST   | `/api/auth/logout`                    | Sign out and clear the session cookie         | Public  |
+| GET    | `/api/auth/me`                        | Get the current authenticated user            | 🔒      |
+| POST   | `/api/users`                          | Create a user                                 | 👑      |
+| GET    | `/api/users`                          | List users (paginated)                        | 👑      |
+| GET    | `/api/users/:id`                      | Get a single user                             | 🔒 self |
+| PATCH  | `/api/users/:id`                      | Update a user (self or admin)                 | ✍️      |
+| DELETE | `/api/users/:id`                      | Soft delete a user                            | 👑      |
+| GET    | `/api/categories`                     | List categories (paginated)                   | Public  |
+| GET    | `/api/categories/:id`                 | Get a category with its products              | Public  |
+| POST   | `/api/categories`                     | Create a category                             | 🔒      |
+| PATCH  | `/api/categories/:id`                 | Update a category                             | 🔒      |
+| DELETE | `/api/categories/:id`                 | Soft delete a category                        | 🔒      |
+| GET    | `/api/products`                       | List products (search/filter/sort/paginate)   | Public  |
+| GET    | `/api/products/categories`            | List product categories                       | Public  |
+| GET    | `/api/products/:id`                   | Get a single product                          | Public  |
+| GET    | `/api/products/:id/reviews`           | Get reviews for a product                     | Public  |
+| GET    | `/api/products/:id/related`           | Get related products                          | Public  |
+| POST   | `/api/products`                       | **Create a product**                          | 👑      |
+| PATCH  | `/api/products/:id`                   | **Update a product**                          | 👑      |
+| DELETE | `/api/products/:id`                   | **Soft delete a product**                     | 👑      |
+| POST   | `/api/products/:id/reviews`           | **Add a review to a product (login required)**| 🔒      |
+| GET    | `/api/reviews`                        | List reviews (paginated)                      | Public  |
+| GET    | `/api/reviews/:id`                    | Get a single review                           | Public  |
+| POST   | `/api/reviews`                        | **Create a review (login required)**          | 🔒      |
+| PATCH  | `/api/reviews/:id`                    | Update a review (author or admin)             | ✍️      |
+| DELETE | `/api/reviews/:id`                    | Soft delete a review (author or admin)        | ✍️      |
+| POST   | `/api/orders`                         | Create an order for the current user          | 🔒      |
+| GET    | `/api/orders/my-orders`               | Get the current user's orders                 | 🔒      |
+| GET    | `/api/orders/all`                     | Get all orders                                | 👑      |
+| PATCH  | `/api/orders/:id/status`              | Update an order status                        | 👑      |
+| POST   | `/api/payment/confirm-order`          | Confirm order after checkout                  | 🔒      |
+| POST   | `/api/payment/create-payment-intent`  | Create Stripe intent (stub — returns 400)     | 🔒      |
+| GET    | `/api/dashboard/stats`                | Dashboard stats                               | 👑      |
+| GET    | `/api/dashboard/monthly-orders`       | Orders grouped by month/year                  | 👑      |
+| GET    | `/api/dashboard/order-status`         | Orders grouped by status                      | 👑      |
+| POST   | `/api/newsletter/subscribe`           | Subscribe an email                            | Public  |
+
+---
+
+## Roles & Permissions
+
+- **Product CRUD is admin-only.** Only users with role `ADMIN` can **create, update, or delete** products (`POST` / `PATCH` / `DELETE /api/products/:id`). Any other role gets `403 Forbidden`. Everyone else (logged-in or not) can still **browse** products and read product data.
+- **Only logged-in users can review products.** Submitting a review (`POST /api/products/:id/reviews` or `POST /api/reviews`) requires a valid login (🔒). Visitors without a token get `401`. A review can only be **edited or deleted by its author, or by an admin** (✍️).
+- **Admin-only (👑):** user management (`/api/users`), viewing all orders + updating order status (`/api/orders/all`, `/api/orders/:id/status`), and dashboard analytics (`/api/dashboard`).
+- **Logged-in users (🔒):** create orders, view their own order history, update their own profile.
+
+---
+
 ## Authentication — `/api/auth`
 
-### POST `/api/auth/register` — Create a new user account
+### POST `/api/auth/register` — Create a new user account (auto-login)
 
 **Request body:**
 
 ```jsonc
 {
   "name": "John Doe",
-  "username": "johndoe",
+  "username": "johndoe",         // optional
   "email": "john@example.com",
   "password": "secret123",
-  "image": "https://.../avatar.png", // optional
+  "image": "https://.../avatar.png" // optional
 }
 ```
 
-**Response — `201 Created`**
+**Response — `201 Created`** (sets `shopnexus_token` httpOnly cookie)
 
 ```jsonc
 {
   "success": true,
   "message": "User registered successfully",
   "data": {
-    "token": "eyJhbGciOiJIUzI1NiIs...",
     "user": {
       "id": "019f...",
       "name": "John Doe",
@@ -157,9 +222,9 @@ All endpoints return a consistent envelope:
       "email": "john@example.com",
       "image": null,
       "role": "USER",
-      "isActive": "ACTIVE",
-    },
-  },
+      "isActive": "ACTIVE"
+    }
+  }
 }
 ```
 
@@ -173,13 +238,17 @@ All endpoints return a consistent envelope:
 { "email": "john@example.com", "password": "secret123" }
 ```
 
-**Response — `200 OK`** (same shape as register: `token` + `user`)
+**Response — `200 OK`** (same shape as register, sets `shopnexus_token` httpOnly cookie)
 
 **Errors:** `400`, `401` (invalid credentials or account deactivated/deleted)
 
+### POST `/api/auth/logout` — Sign out
+
+Clears the `shopnexus_token` cookie. **Response — `200 OK`**
+
 ### GET `/api/auth/me` — Get the currently authenticated user 🔒
 
-**Auth:** Bearer token required
+**Auth:** httpOnly cookie (or Bearer token)
 
 **Response — `200 OK`**
 
@@ -194,42 +263,34 @@ All endpoints return a consistent envelope:
     "email": "john@example.com",
     "image": null,
     "role": "USER",
-    "isActive": "ACTIVE",
-  },
+    "isActive": "ACTIVE"
+  }
 }
 ```
 
+**Errors:** `401` (no cookie/token), `403` (invalid/expired)
+
 ---
 
-## Users — `/api/users` 🔒 (all routes require a token)
+## Users — `/api/users` 🔒
 
 > `POST, GET /, DELETE` are **admin-only**; `GET /:id` and `PATCH /:id` are self-or-admin.
 
 ### POST `/api/users` — Create a user (admin) 👑
 
-**Request body:** same as `/auth/register` plus optional `"role": "ADMIN"`
-
-**Response — `201 Created`** → sanitized user
+**Request body:** same as `/auth/register` plus optional `"role": "ADMIN"` · **Response — `201 Created`**
 
 ### GET `/api/users` — List users (admin) 👑
 
-**Query params:** `page`, `limit`, `search` (name/username/email contains)
+**Query params:** `page`, `limit`, `search` · **Response — `200 OK`** → `{ items, meta }`
 
-**Response — `200 OK`** → `{ items, meta }`
-
-### GET `/api/users/:id` — Get a single user 🔒
-
-**Response — `200 OK`** → sanitized user · **Errors:** `404`
+### GET `/api/users/:id` — Get a single user 🔒 · **Errors:** `404`
 
 ### PATCH `/api/users/:id` — Update a user 🔒
 
-**Request body:** any of `name`, `username`, `email`, `image`, `password`, `role`
-
-**Response — `200 OK`** → updated sanitized user · **Errors:** `400`, `403`, `404`, `409`
+**Request body:** any of `name`, `username`, `email`, `image`, `password`, `role` · **Errors:** `400`, `403`, `404`, `409`
 
 ### DELETE `/api/users/:id` — Soft delete a user (admin) 👑
-
-**Response — `200 OK`** `{ "id": "..." }` · **Errors:** `403`, `404`
 
 ---
 
@@ -237,41 +298,19 @@ All endpoints return a consistent envelope:
 
 > Reads are public; create/update/delete require a token 🔒
 
-### POST `/api/categories` — Create a category 🔒
-
-**Request body:** `{ "name": "Electronics" }`
-
-**Response — `201 Created`** → category · **Errors:** `400`, `409`
-
-### GET `/api/categories` — List categories
-
-**Query params:** `page`, `limit`, `search`
-
-**Response — `200 OK`** → `{ items, meta }`
-
-### GET `/api/categories/:id` — Get a category with its products
-
-**Response — `200 OK`** → category incl. `product` array · **Errors:** `404`
-
-### PATCH `/api/categories/:id` — Update a category 🔒
-
-**Request body:** `{ "name": "New Name" }`
-
-**Response — `200 OK`** → updated category · **Errors:** `400`, `404`, `409`
-
-### DELETE `/api/categories/:id` — Soft delete a category 🔒
-
-**Response — `200 OK`** · **Errors:** `404`
+### POST `/api/categories` — Create a category 🔒 · **Errors:** `400`, `409`
+### GET `/api/categories` — List categories (`page`, `limit`, `search`) → `{ items, meta }`
+### GET `/api/categories/:id` — Category with its `product[]` · **Errors:** `404`
+### PATCH `/api/categories/:id` — Update a category 🔒 · **Errors:** `400`, `404`, `409`
+### DELETE `/api/categories/:id` — Soft delete a category 🔒 · **Errors:** `404`
 
 ---
 
 ## Products — `/api/products`
 
-> Reads are public; create/update/delete require a token 🔒
+> Reads are **public**; create/update/delete are **admin-only** 👑; adding a review requires a login 🔒
 
-### POST `/api/products` — Create a product 🔒
-
-**Request body:**
+### POST `/api/products` — Create a product 👑
 
 ```jsonc
 {
@@ -279,83 +318,107 @@ All endpoints return a consistent envelope:
   "title": "MacBook Pro 14",
   "image": "https://.../laptop.jpg",
   "price": 1999.99,
-  "stock": 10, // optional, default 0
+  "stock": 10,          // optional, default 0
   "description": "...", // optional
-  "categoryId": "019f...", // must reference an existing category
+  "categoryId": "019f..."
 }
 ```
 
-**Response — `201 Created`** → product · **Errors:** `400`, `404` (category not found)
+**Errors:** `400`, `404` (category not found)
 
-### GET `/api/products` — List products (with filters)
+### GET `/api/products` — List products with filters
 
-**Query params:** `page`, `limit`, `search` (name/title contains), `categoryId`, `minPrice`, `maxPrice`
+**Query params:** `page`, `limit`, `search`, `categoryId`, `minPrice`, `maxPrice` → `{ items, meta }`
 
-**Response — `200 OK`** → `{ items, meta }` (each item includes its `category`)
+### GET `/api/products/:id` — Single product incl. `category` and non-deleted `reviews`
 
-### GET `/api/products/:id` — Get a single product
+### GET `/api/products/:id/reviews` — Reviews for a product
 
-**Response — `200 OK`** → product incl. `category` and non-deleted `reviews` with review author · **Errors:** `404`
+### GET `/api/products/:id/related` — Related products
 
-### PATCH `/api/products/:id` — Update a product 🔒
+### POST `/api/products/:id/reviews` — Add a review to a product 🔒 (logged-in users only)
 
-**Request body:** any of `name`, `title`, `image`, `description`, `price`, `stock`, `categoryId`
+### PATCH `/api/products/:id` — Update a product 👑
 
-**Response — `200 OK`** → updated product · **Errors:** `400`, `404`
+**Request body:** any of `name`, `title`, `image`, `description`, `price`, `stock`, `categoryId` · **Errors:** `400`, `404`
 
-### DELETE `/api/products/:id` — Soft delete a product 🔒
-
-**Response — `200 OK`** · **Errors:** `404`
+### DELETE `/api/products/:id` — Soft delete a product 👑
 
 ---
 
 ## Reviews — `/api/reviews`
 
-> Reads are public; create requires a token 🔒; update/delete are owner-or-admin.
+> Reads are public; **creating a review requires a logged-in user** 🔒; update/delete are owner-or-admin (✍️).
 
-### POST `/api/reviews` — Create a review 🔒
+### POST `/api/reviews` — Create a review 🔒 (logged-in users only)
+```jsonc
+{ "rating": 5, "comment": "Amazing!", "productId": "019f..." }
+```
+**Errors:** `400`, `404`
 
-**Request body:**
+### GET `/api/reviews` — List (`page`, `limit`, `productId`) → `{ items, meta }`
+### GET `/api/reviews/:id` — Single review · **Errors:** `404`
+### PATCH `/api/reviews/:id` — Update (owner or admin) 🔒 · **Errors:** `400`, `403`, `404`
+### DELETE `/api/reviews/:id` — Soft delete (owner or admin) 🔒 · **Errors:** `403`, `404`
+
+---
+
+## Orders — `/api/orders` 🔒 (all routes require a token)
+
+### POST `/api/orders` — Create an order for the current user
+
+Creates an order with status `PENDING` from the provided line items and decrements product stock.
 
 ```jsonc
 {
-  "rating": 5, // integer 1–5
-  "comment": "Amazing!", // optional
-  "productId": "019f...",
+  "totalAmount": 1999.99,
+  "items": [
+    { "productId": "019f...", "name": "Laptop", "price": 1999.99, "quantity": 1, "image": "https://..." }
+  ],
+  "paymentIntentId": "pi_..." // optional
 }
 ```
 
-**Response — `201 Created`** → review · **Errors:** `400`, `404` (product not found)
+### GET `/api/orders/my-orders` — Current user's orders (latest first)
 
-### GET `/api/reviews` — List reviews
+### GET `/api/orders/all` — All orders (admin) 👑
 
-**Query params:** `page`, `limit`, `productId` (filter by product)
+### PATCH `/api/orders/:id/status` — Update an order status (admin) 👑
 
-**Response — `200 OK`** → `{ items, meta }` (items include `user` and `product` summaries)
+**Request body:** `{ "status": "shipping" }` (accepts `pending` | `shipping` | `delivered`, case-insensitive). The stored value is the uppercase enum (`SHIPPING`).
 
-### GET `/api/reviews/:id` — Get a single review
+---
 
-**Response — `200 OK`** → review · **Errors:** `404`
+## Payments — `/api/payment` 🔒 (all routes require a token)
 
-### PATCH `/api/reviews/:id` — Update a review 🔒
+### POST `/api/payment/confirm-order` — Create order after checkout (same as `POST /orders`)
+### POST `/api/payment/create-payment-intent` — Currently returns `400` "Stripe is not configured. Use demo checkout instead."
 
-**Auth:** owner or admin · **Request body:** `{ "rating"?, "comment"? }`
+---
 
-**Response — `200 OK`** → updated review · **Errors:** `400`, `403`, `404`
+## Dashboard — `/api/dashboard` 🔒 (admin)
 
-### DELETE `/api/reviews/:id` — Soft delete a review 🔒
+### GET `/api/dashboard/stats` — Total products, orders, revenue, pending orders
+### GET `/api/dashboard/monthly-orders` — Order counts grouped by month/year
+### GET `/api/dashboard/order-status` — Order counts grouped by status
 
-**Auth:** owner or admin · **Response — `200 OK`** · **Errors:** `403`, `404`
+---
+
+## Newsletter — `/api/newsletter`
+
+### POST `/api/newsletter/subscribe` — Subscribe an email
+
+**Request body:** `{ "email": "john@example.com" }` · **Errors:** `400`, `409`
 
 ---
 
 ## Prisma Feature Coverage
 
 - ✅ **Client** via driver adapter (`@prisma/adapter-pg`) → `src/lib/prisma.ts`
-- ✅ **Migrate** — versioned SQL in `prisma/migrations` (run with `npm run prisma:migrate`)
+- ✅ **Migrate** — versioned SQL in `prisma/migrations` (`npm run prisma:migrate`)
 - ✅ **Studio** — `npm run prisma:studio`
-- ✅ **Relations** — `Product↔Category`, `Review↔User`, `Review↔Product`
-- ✅ **Enums** — `Role`, `IsActive`
+- ✅ **Relations** — `Product↔Category`, `Review↔User`, `Review↔Product`, `Order↔User`
+- ✅ **Enums** — `Role`, `IsActive`, `OrderStatus`
 - ✅ **Indexes** — on all foreign keys
 
 ## License

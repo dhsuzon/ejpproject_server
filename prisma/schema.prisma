@@ -18,6 +18,12 @@ enum IsActive {
     INACTIVE
 }
 
+enum OrderStatus {
+  PENDING
+  SHIPPING
+  DELIVERED
+}
+
 model User {
   id       String @id @default(uuid(7)) @unique
   name     String @unique
@@ -31,6 +37,7 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   reviews   Review[]
+  orders    Order[]
   @@map("users")
 }
 
@@ -81,4 +88,21 @@ model Category {
   product Product[]
 
   @@map("categories")
+}
+
+model Order {
+  id            String      @id @default(uuid(7))
+  userId        String
+  totalAmount   Float
+  status        OrderStatus @default(PENDING)
+  items         Json
+  paymentIntentId String?
+  isDeleted     Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("orders")
 }

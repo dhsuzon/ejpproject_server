@@ -7,7 +7,7 @@ import { createUserRecord } from "../user/user.service.ts";
 
 export interface RegisterData {
   name: string;
-  username: string;
+  username?: string;
   email: string;
   password: string;
   image?: string;
@@ -19,7 +19,23 @@ export interface LoginData {
 }
 
 export const registerService = async (data: RegisterData) => {
-  const user = await createUserRecord(data);
+  const email = validateEmail(data.email).toLowerCase();
+  const derivedUsername = email.split("@")[0] ?? email;
+  const username =
+    typeof data.username === "string" && data.username.trim() !== ""
+      ? data.username.trim()
+      : derivedUsername;
+
+  const userData: {
+    name: string;
+    username: string;
+    email: string;
+    password: string;
+    image?: string;
+  } = { name: data.name, username, email, password: data.password };
+  if (data.image !== undefined) userData.image = data.image;
+
+  const user = await createUserRecord(userData);
   const token = createToken({ id: user.id, role: user.role });
   return { token, user };
 };

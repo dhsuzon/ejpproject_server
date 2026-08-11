@@ -7,6 +7,7 @@ import {
   requiredNumber,
   requiredString,
 } from "../../lib/validation.ts";
+import { validateRating } from "../review/review.service.ts";
 
 export interface CreateProductData {
   name: string;
@@ -16,6 +17,7 @@ export interface CreateProductData {
   price: number;
   stock?: number;
   categoryId: string;
+  category?: string;
 }
 
 export interface UpdateProductData {
@@ -26,6 +28,7 @@ export interface UpdateProductData {
   price?: number;
   stock?: number;
   categoryId?: string;
+  category?: string;
 }
 
 export interface GetProductsQuery {
@@ -33,6 +36,8 @@ export interface GetProductsQuery {
   limit?: string | undefined;
   search?: string | undefined;
   categoryId?: string | undefined;
+  category?: string | undefined;
+  sort?: string | undefined;
   minPrice?: string | undefined;
   maxPrice?: string | undefined;
 }
@@ -46,6 +51,24 @@ const getCategoryOrThrow = async (categoryId: string): Promise<void> => {
   }
 };
 
+const resolveCategoryId = async (
+  categoryId: string | undefined,
+  categoryName: string | undefined,
+): Promise<string> => {
+  if (categoryId) {
+    await getCategoryOrThrow(categoryId);
+    return categoryId;
+  }
+  const name = requiredString(categoryName, "categoryId");
+  const category = await prisma.category.findFirst({
+    where: { name, isDeleted: false },
+  });
+  if (!category) {
+    throw new AppError(404, "Category not found");
+  }
+  return category.id;
+};
+
 export const createProductService = async (data: CreateProductData) => {
   const name = requiredString(data.name, "name");
   const title = requiredString(data.title, "title");
@@ -56,9 +79,7 @@ export const createProductService = async (data: CreateProductData) => {
     throw new AppError(400, "Price cannot be negative");
   }
   const stock = optionalNumber(data.stock, 0);
-  const categoryId = requiredString(data.categoryId, "categoryId");
-
-  await getCategoryOrThrow(categoryId);
+  const categoryId = await resolveCategoryId(data.categoryId, data.category);
 
   return prisma.product.create({
     data: {
@@ -75,6 +96,13 @@ export const createProductService = async (data: CreateProductData) => {
 
 export const getAllProductsService = async (query: GetProductsQuery) => {
   const { page, limit, skip } = getPagination(query);
+  let categoryId = query.categoryId;
+  if (!categoryId && query.category) {
+    const category = await prisma.category.findFirst({
+      where: { name: query.category, isDeleted: false },
+    });
+    if (category) categoryId = category.id;
+  }
   const where = {
     isDeleted: false,
     ...(query.search
@@ -85,7 +113,7 @@ export const getAllProductsService = async (query: GetProductsQuery) => {
           ],
         }
       : {}),
-    ...(query.categoryId ? { categoryId: query.categoryId } : {}),
+    ...(categoryId ? { categoryId } : {}),
     ...(query.minPrice || query.maxPrice
       ? {
           price: {
@@ -100,12 +128,21 @@ export const getAllProductsService = async (query: GetProductsQuery) => {
       : {}),
   };
 
+  const orderBy =
+    query.sort === "oldest"
+      ? { createdAt: "asc" as const }
+      : query.sort === "price_asc"
+        ? { price: "asc" as const }
+        : query.sort === "price_desc"
+          ? { price: "desc" as const }
+          : { createdAt: "desc" as const };
+
   const [products, total] = await Promise.all([
     prisma.product.findMany({
       where,
       skip,
       take: limit,
-      orderBy: { createdAt: "desc" },
+      orderBy,
       include: { category: true },
     }),
     prisma.product.count({ where }),
@@ -173,9 +210,8 @@ export const updateProductService = async (
     updateData.price = price;
   }
   if (data.stock !== undefined) updateData.stock = optionalNumber(data.stock, 0);
-  if (data.categoryId !== undefined) {
-    updateData.categoryId = requiredString(data.categoryId, "categoryId");
-    await getCategoryOrThrow(updateData.categoryId);
+  if (data.categoryId !== undefined || data.category !== undefined) {
+    updateData.categoryId = await resolveCategoryId(data.categoryId, data.category);
   }
 
   return prisma.product.update({ where: { id }, data: updateData });
@@ -189,4 +225,74 @@ export const softDeleteProductService = async (id: string): Promise<void> => {
     throw new AppError(404, "Product not found");
   }
   await prisma.product.update({ where: { id }, data: { isDeleted: true } });
+};
+
+export const getProductCategoriesService = async (): Promise<string[]> => {
+  const categories = await prisma.category.findMany({
+    where: { isDeleted: false },
+    orderBy: { name: "asc" },
+  });
+  return categories.map((category) => category.name);
+};
+
+export const getRelatedProductsService = async (id: string) => {
+  const product = await prisma.product.findFirst({
+    where: { id, isDeleted: false },
+  });
+  if (!product) {
+    throw new AppError(404, "Product not found");
+  }
+  return prisma.product.findMany({
+    where: {
+      isDeleted: false,
+      categoryId: product.categoryId,
+      NOT: { id },
+    },
+    take: 4,
+    orderBy: { createdAt: "desc" },
+    include: { category: true },
+  });
+};
+
+export const getProductReviewsService = async (productId: string) => {
+  const product = await prisma.product.findFirst({
+    where: { id: productId, isDeleted: false },
+  });
+  if (!product) {
+    throw new AppError(404, "Product not found");
+  }
+  return prisma.review.findMany({
+    where: { productId, isDeleted: false },
+    orderBy: { createdAt: "desc" },
+    include: {
+      user: { select: { id: true, name: true, image: true } },
+    },
+  });
+};
+
+export const createProductReviewService = async (
+  productId: string,
+  userId: string,
+  data: { rating: number; comment?: string },
+) => {
+  const product = await prisma.product.findFirst({
+    where: { id: productId, isDeleted: false },
+  });
+  if (!product) {
+    throw new AppError(404, "Product not found");
+  }
+  const rating = validateRating(data.rating);
+  const comment = optionalString(data.comment);
+
+  return prisma.review.create({
+    data: {
+      rating,
+      productId,
+      userId,
+      ...(comment !== undefined ? { comment } : {}),
+    },
+    include: {
+      user: { select: { id: true, name: true, image: true } },
+    },
+  });
 };
