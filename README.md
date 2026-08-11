@@ -2,6 +2,9 @@
 
 A production-ready, modular REST API built with **Express.js**, **TypeScript**, **Prisma ORM**, and **PostgreSQL**, with **JWT** (stored in an **httpOnly cookie**) authentication and **bcrypt** password hashing.
 
+# Backend Live Link
+[https://prisma-postgres-database.vercel.app/](https://prisma-postgres-database.vercel.app/)
+
 ## Tech Stack
 
 | Layer    | Technology                                    |
